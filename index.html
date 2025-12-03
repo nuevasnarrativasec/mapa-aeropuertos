@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Aeropuertos - Latinoamérica</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        
+        /* Contenedor del buscador */
+        .search-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            width: 300px;
+        }
+        
+        .search-title {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .search-container input {
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box; /* Para que el padding no rompa el ancho */
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .search-container input:focus {
+            outline: none;
+            border-color: #0078A8;
+            box-shadow: 0 0 5px rgba(0,120,168,0.3);
+        }
+
+        /* Estilos del Popup */
+        .popup-content {
+            font-size: 13px;
+            min-width: 200px;
+        }
+        .popup-content h3 {
+            margin-top: 0;
+            border-bottom: 3px solid #0078A8;
+            padding-bottom: 8px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        .popup-item {
+            margin-bottom: 8px;
+            line-height: 1.4;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+        }
+        .popup-item:last-child {
+            border-bottom: none;
+        }
+        .popup-label {
+            font-weight: 700;
+            display: block;
+            color: #555;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="search-container">
+        <p class="search-title">Filtrar Aeropuerto:</p>
+        <input type="text" id="search-input" list="airport-list" placeholder="Escribe o selecciona...">
+        <datalist id="airport-list"></datalist>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // 1. Inicializar el mapa
+        var map = L.map('map').setView([-10.0, -70.0], 3);
+
+        // 2. Cargar Skin (TileLayer) - CartoDB Voyager
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        // 3. Datos de los Aeropuertos
+        const aeropuertos = [
+            {
+                nombre: "Argentina – Ezeiza",
+                lat: -34.815, lng: -58.535,
+                infra: "4 terminales, 30M pax/año",
+                accesos: "✔ Buena, autopista directa",
+                procesos: "✔ Sin congestiones severas",
+                puntualidad: "✔ Adecuada",
+                conectividad: "Amplia",
+                servicios: "Amplios servicios, precios normales",
+                problemas: "Saturación puntual en estacionamiento"
+            },
+            {
+                nombre: "Brasil – GRU",
+                lat: -23.435, lng: -46.473,
+                infra: "3 terminales, hub mayor",
+                accesos: "✖ Transporte público deficiente",
+                procesos: "✔ Seguridad 5 min, migración <10 min; ✖ limpieza",
+                puntualidad: "✖ Saturado",
+                conectividad: "Muy alta (65 internacionales)",
+                servicios: "300+ comercios",
+                problemas: "Accesos deficientes, baños, saturación"
+            },
+            {
+                nombre: "Chile – SCL",
+                lat: -33.393, lng: -70.793,
+                infra: "2 terminales, 38M pax",
+                accesos: "✔ Vías adecuadas",
+                procesos: "✖ Alta congestión (hasta 1h)",
+                puntualidad: "✔ 84% puntual",
+                conectividad: "Alta",
+                servicios: "40+ tiendas, lounges",
+                problemas: "Congestión en procesos"
+            },
+            {
+                nombre: "Colombia – El Dorado",
+                lat: 4.701, lng: -74.146,
+                infra: "2 terminales, 45M pax",
+                accesos: "✖ Necesita ampliación vial",
+                procesos: "✔ Seguridad <10 min, migración <20 min",
+                puntualidad: "🌟 Muy alta",
+                conectividad: "🌟 Mayor de la región",
+                servicios: "Muy completa",
+                problemas: "Acceso insuficiente"
+            },
+            {
+                nombre: "Costa Rica – SJO",
+                lat: 9.993, lng: -84.208,
+                infra: "1 terminal int., 13 mangas",
+                accesos: "✖ Ruta más congestionada del país",
+                procesos: "✖ Congestión en migración",
+                puntualidad: "✖ Radar falló 7 h",
+                conectividad: "Alta",
+                servicios: "Buena",
+                problemas: "Accesos, fallas técnicas"
+            },
+            {
+                nombre: "El Salvador – SAL",
+                lat: 13.440, lng: -89.056,
+                infra: "1 terminal ampliada",
+                accesos: "✖ Una sola vía",
+                procesos: "✔ 15–20 min migración; 30–45 min equipaje",
+                puntualidad: "✔ Sin incidentes graves",
+                conectividad: "Alta región + EEUU",
+                servicios: "Variada",
+                problemas: "Acceso único"
+            },
+            {
+                nombre: "Perú – Lima (JCH)",
+                lat: -12.024, lng: -77.112,
+                infra: "Nuevo terminal 30–40M pax",
+                accesos: "✖ Acceso crítico (puentes temporales)",
+                procesos: "🌟 Seguridad 18–28 s; equipaje 10–18 min",
+                puntualidad: "✔ Salidas 82%",
+                conectividad: "Alta",
+                servicios: "Muy completa",
+                problemas: "Accesos, ajustes operativos iniciales"
+            },
+            {
+                nombre: "Puerto Rico – SJU",
+                lat: 18.439, lng: -66.002,
+                infra: "30 puertas, 13M pax",
+                accesos: "✖ Tráfico en hora pico",
+                procesos: "✖ Seguridad 30–45 min",
+                puntualidad: "✔ 72–80%",
+                conectividad: "5 capitales + Caribe",
+                servicios: "Amplia, precios altos",
+                problemas: "Falta estacionamiento, congestión"
+            },
+            {
+                nombre: "Uruguay – Carrasco",
+                lat: -34.838, lng: -56.031,
+                infra: "1 terminal, 4.5M diseño",
+                accesos: "✔ Excelente acceso",
+                procesos: "🌟 93% pasa control <10 min",
+                puntualidad: "🌟 91–92%",
+                conectividad: "Media (6 capitales)",
+                servicios: "Variada",
+                problemas: "Sin problemas críticos"
+            },
+            {
+                nombre: "México – AICM",
+                lat: 19.436, lng: -99.072,
+                infra: "2 terminales, 45M pax",
+                accesos: "✔ Buen acceso pero ✖ mala señalización",
+                procesos: "✖ Procesos lentos y engorrosos",
+                puntualidad: "✖ Saturado",
+                conectividad: "Muy alta",
+                servicios: "Remodelación en curso",
+                problemas: "Saturación, mala señalética"
+            },
+            {
+                nombre: "Venezuela – Maiquetía",
+                lat: 10.601, lng: -66.991,
+                infra: "2 terminales",
+                accesos: "✖ Congestión",
+                procesos: "✖ 30–40 min; frecuentes fallas",
+                puntualidad: "✖ Retrasos severos (2–12 h)",
+                conectividad: "Media",
+                servicios: "Nueva oferta comercial",
+                problemas: "Fallas eléctricas, retrasos graves"
+            }
+        ];
+
+        let markersLayer = L.layerGroup().addTo(map);
+
+        // 4. Poblar el buscador automáticamente (Dropdown)
+        const dataList = document.getElementById('airport-list');
+        aeropuertos.forEach(a => {
+            let option = document.createElement('option');
+            option.value = a.nombre;
+            dataList.appendChild(option);
+        });
+
+        // 5. Función para crear marcadores
+        function displayMarkers(data) {
+            markersLayer.clearLayers();
+
+            data.forEach(function(aeropuerto) {
+                let popupContent = `
+                    <div class="popup-content">
+                        <h3>${aeropuerto.nombre}</h3>
+                        <div class="popup-item"><span class="popup-label">Infraestructura</span> ${aeropuerto.infra}</div>
+                        <div class="popup-item"><span class="popup-label">Accesos</span> ${aeropuerto.accesos}</div>
+                        <div class="popup-item"><span class="popup-label">Procesos Críticos</span> ${aeropuerto.procesos}</div>
+                        <div class="popup-item"><span class="popup-label">Puntualidad</span> ${aeropuerto.puntualidad}</div>
+                        <div class="popup-item"><span class="popup-label">Conectividad</span> ${aeropuerto.conectividad}</div>
+                        <div class="popup-item"><span class="popup-label">Servicios</span> ${aeropuerto.servicios}</div>
+                        <div class="popup-item"><span class="popup-label" style="color:#d32f2f;">Problemas Principales</span> ${aeropuerto.problemas}</div>
+                    </div>
+                `;
+
+                let marker = L.marker([aeropuerto.lat, aeropuerto.lng])
+                    .bindPopup(popupContent);
+                
+                // Si solo hay un resultado, abrir el popup automáticamente
+                if(data.length === 1) {
+                    marker.openPopup();
+                }
+
+                markersLayer.addLayer(marker);
+            });
+        }
+
+        displayMarkers(aeropuertos);
+
+        // 6. Lógica del buscador y autocompletar
+        const searchInput = document.getElementById('search-input');
+
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            // Filtrar datos
+            const filteredAirports = aeropuertos.filter(a => 
+                a.nombre.toLowerCase().includes(searchTerm)
+            );
+
+            // Actualizar mapa
+            displayMarkers(filteredAirports);
+
+            // Zoom automático inteligente
+            if (filteredAirports.length === 1) {
+                // Si hay coincidencia exacta o única, volar ahí
+                map.flyTo([filteredAirports[0].lat, filteredAirports[0].lng], 13);
+            } else if (filteredAirports.length === 0) {
+                // Si no hay resultados, no hacer nada (o podrías mostrar un aviso)
+            } else if (searchTerm === "") {
+                // Si borra el texto, volver a vista general
+                map.setView([-10.0, -70.0], 3); 
+            }
+        });
+    </script>
+</body>
+</html>
